@@ -1,97 +1,129 @@
-import os
-import pandas as pd
-from datetime import datetime
-from re import match
+# import os
+# from datetime import datetime
 from selenium import webdriver
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.keys import Keys
 from time import sleep
+# from random import randint
 
 
 def load_driver():
 
-    global driver
-
-    firefox_profile = None
-    driver = webdriver.Firefox(firefox_profile, executable_path="../../geckodriver.exe")
+    driver = webdriver.Firefox(executable_path="../../geckodriver.exe")
 
     return driver
 
 
-def load_grabr(email, password):
-
-    if not (email and password):
-        raise BaseException
-
-    login_page = "https://grabr.io/login"
-    driver.get(login_page)
-    sleep(2)
+def wait_for_element(driver, selector):
 
     try:
+        driver.find_element_by_css_selector(selector)
+        loaded = True
+
+    except NoSuchElementException:
+        loaded = False
+
+    while not loaded:
+        sleep(1)
+        wait_for_element(driver, selector)
+
+    return
+
+
+def load_grabr(driver, email, password):
+
+    def with_email(driver):
 
         login_with_email = driver.find_element_by_css_selector("button.mt5")
         login_with_email.click()
-        sleep(3)
+
+        return driver
+
+    def sign_in(driver):
 
         email_input = driver.find_element_by_css_selector("input[type='email']")
         password_input = driver.find_element_by_css_selector("input[type='password']")
 
+        email_input.clear()
         email_input.send_keys(email)
+        password_input.clear()
         password_input.send_keys(password)
+
         log_in_button = driver.find_element_by_css_selector("button[data-persistent-id='click.sign-in-with-email']")
         log_in_button.click()
 
-    except NoSuchElementException:
-        pass
+        return driver
 
+    driver.get("https://grabr.io/login")
 
-def fill_product_details(price=100):
-
-    try:
-
-        price_input = driver.find_element_by_css_selector("input[type='number']")
-        price_input.clear()
-        price_input.send_keys(str(price))
-
-        next_button = driver.find_element_by_css_selector(".p5 div[role='button']")
-        # to avoid ElementClickInterceptedException
-        driver.execute_script("document.documentElement.scrollTop = 0")
-        next_button.click()
-
-        return
-
-    except NoSuchElementException:
+    while not wait_for_element("button.mt5"):
         sleep(1)
-        fill_product_details()
+        wait_for_element("button.mt5")
+
+    with_email(driver)
+
+    if driver.current_url.endswith("login"):
+
+        email_screen = with_email(driver)
+        sleep(5)
+        login_error = sign_in(email_screen)
+        sleep(3)
+
+        # Check if there's an error banner and load_grabr again, otherwise proceed
+        try:
+            login_error.find_element_by_css_selector("._13._14")
+            print("Log in error, close the script and try again in a few minutes.")
+            load_grabr(driver, email, password)
+
+        except NoSuchElementException:
+            return driver
 
 
-def fill_delivery_city(city="Buenos Aires"):
+def fill_in_price(driver, price=100):
 
-    try:
-        deliver_to = driver.find_element_by_css_selector("input[placeholder='City']")
-        deliver_to.clear()
-        deliver_to.send_keys(city)
+    price_input = driver.find_element_by_css_selector("input[type='number']")
+    price_input.clear()
+    price_input.send_keys(str(price))
 
-    except NoSuchElementException:
-        sleep(1)
-        fill_delivery_city()
+    next_button = driver.find_element_by_css_selector(".p5 div[role='button']")
+    # to avoid ElementClickInterceptedException
+    driver.execute_script("document.documentElement.scrollTop = 0")
+    next_button.click()
+
+    return driver
 
 
-def press_city_button():
+def fill_delivery_city(driver, city="Buenos Aires"):
 
-    try:
-        city_button = driver.find_element_by_css_selector(".pt8 > div:nth-child(2) > label:nth-child(1) > div:nth-child(2) > div:nth-child(1) > div:nth-child(1) > div:nth-child(3) > div:nth-child(1) > div:nth-child(2) > div:nth-child(1) > div")
-        city_button.click()
+    def check_city_registered():
+
+        city_input.send_keys(Keys.ENTER)
+        city_and_date_details = driver.find_element_by_css_selector(".py5:nth-child(2)")
+        does_city_appear = driver.execute_script("arguments[0].children.length;", city_and_date_details)
+
+        print(does_city_appear)
+
+        while does_city_appear != 3:
+            sleep(1)
+            check_city_registered()
 
         next_button = driver.find_element_by_css_selector(".LG_gc4 button")
         next_button.click()
 
+    try:
+        city_input = driver.find_element_by_css_selector("input[placeholder='City']")
+        city_input.clear()
+        city_input.send_keys(city)
+
     except NoSuchElementException:
         sleep(1)
-        press_city_button()
+        fill_delivery_city(driver)
+
+    finally:
+        check_city_registered()
 
 
-def read_prices():
+def read_prices(driver):
 
     try:
         price_table = driver.find_element_by_css_selector(".py4")
@@ -104,21 +136,24 @@ def read_prices():
 
     except NoSuchElementException:
         sleep(1)
-        read_prices()
+        read_prices(driver)
 
 
 def main():
 
-    email = ""
-    password = ""
+    email = "wixo@simplemail.in"
+    password = '?=V,nYe,g6`_N#pV-8i"VSTS'
 
-    load_driver()
-    load_grabr(email, password)
-    driver.get(r"https://grabr.io/en/grabs/new?url=https%3A%2F%2Fwww.apple.com%2Fshop%2Fbuy-iphone%2Fiphone-11-pro")
-    fill_product_details()
-    fill_delivery_city()
-    press_city_button()
-    read_prices()
+    driver = load_driver()
+    load_grabr(driver, email, password)
+
+    product_details_page = driver.get(f"https://grabr.io/en/grabs/new?url=https%3A%2F%2Fwww.apple.com%2Fshop%2Fbuy-iphone%2Fiphone-11-pro")
+
+    wait_for_element(product_details_page, ".SM_pb5")
+    fill_in_price(product_details_page)
+
+    fill_delivery_city(driver)
+    read_prices(driver)
 
 
 if __name__ == '__main__':
