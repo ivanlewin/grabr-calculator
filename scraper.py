@@ -18,12 +18,8 @@ def wait_for_element(driver, selector):
 
     try:
         driver.find_element_by_css_selector(selector)
-        loaded = True
 
     except NoSuchElementException:
-        loaded = False
-
-    while not loaded:
         sleep(1)
         wait_for_element(driver, selector)
 
@@ -55,31 +51,31 @@ def load_grabr(driver, email, password):
         return driver
 
     driver.get("https://grabr.io/login")
-
-    while not wait_for_element("button.mt5"):
-        sleep(1)
-        wait_for_element("button.mt5")
-
-    with_email(driver)
+    sleep(3)
 
     if driver.current_url.endswith("login"):
 
+        wait_for_element(driver, "button.mt5")
         email_screen = with_email(driver)
-        sleep(5)
-        login_error = sign_in(email_screen)
+
+        wait_for_element(email_screen, ".input")
+        sign_in(email_screen)
+
         sleep(3)
 
         # Check if there's an error banner and load_grabr again, otherwise proceed
         try:
-            login_error.find_element_by_css_selector("._13._14")
+            driver.find_element_by_css_selector("._13._14")
             print("Log in error, close the script and try again in a few minutes.")
             load_grabr(driver, email, password)
 
         except NoSuchElementException:
-            return driver
+            pass
+
+    return driver
 
 
-def fill_in_price(driver, price=100):
+def fill_in_price(driver, price):
 
     price_input = driver.find_element_by_css_selector("input[type='number']")
     price_input.clear()
@@ -93,7 +89,7 @@ def fill_in_price(driver, price=100):
     return driver
 
 
-def fill_delivery_city(driver, city="Buenos Aires"):
+def fill_delivery_city(driver, city):
 
     def check_city_registered():
 
@@ -147,12 +143,11 @@ def main():
     driver = load_driver()
     load_grabr(driver, email, password)
 
-    product_details_page = driver.get(f"https://grabr.io/en/grabs/new?url=https%3A%2F%2Fwww.apple.com%2Fshop%2Fbuy-iphone%2Fiphone-11-pro")
+    driver.get(f"https://grabr.io/en/grabs/new?url=https%3A%2F%2Fwww.apple.com%2Fshop%2Fbuy-iphone%2Fiphone-11-pro")
 
-    wait_for_element(product_details_page, ".SM_pb5")
-    fill_in_price(product_details_page)
-
-    fill_delivery_city(driver)
+    wait_for_element(driver, ".SM_pb5")
+    fill_in_price(driver, price=100)
+    fill_delivery_city(driver, city="Buenos Aires")
     read_prices(driver)
 
 
