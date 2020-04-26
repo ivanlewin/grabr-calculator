@@ -112,7 +112,7 @@ def price_breakdown(driver):
         row = item.find_element_by_xpath("parent::div/parent::div")
         value = ''.join(i for i in row.text if i.isdigit())
 
-        print(f"{Name} : {value}")
+        print(f"{name} : {value}")
 
 
     order_total = price_table.find_element_by_xpath("following-sibling::div")
