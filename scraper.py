@@ -51,31 +51,29 @@ def load_grabr(driver, email, password):
         return driver
 
     driver.get("https://grabr.io/login")
+    sleep(3)
 
-    while not wait_for_element("button.mt5"):
-        sleep(1)
-        wait_for_element("button.mt5")
+    if driver.current_url.endswith("login"):  # If not redirected to main page (e.g.: a profile with a stored session)
 
-    with_email(driver)
-
-    if driver.current_url.endswith("login"):
-
+        wait_for_element(driver, "button.mt5")
         email_screen = with_email(driver)
-        sleep(5)
-        login_error = sign_in(email_screen)
+
+        wait_for_element(email_screen, ".input")
+        sign_in(email_screen)
+
         sleep(3)
 
-        # Check if there's an error banner and load_grabr again, otherwise proceed
+        # Search for an error banner.
         try:
-            login_error.find_element_by_css_selector("._13._14")
+            driver.find_element_by_css_selector("._13._14")
             print("Log in error, close the script and try again in a few minutes.")
-            load_grabr(driver, email, password)
+            raise
 
         except NoSuchElementException:
             return driver
 
 
-def fill_in_price(driver, price=100):
+def fill_in_price(driver, price):
 
     price_input = driver.find_element_by_css_selector("input[type='number']")
     price_input.clear()
