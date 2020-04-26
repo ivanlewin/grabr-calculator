@@ -40,9 +40,7 @@ def load_grabr(driver, email, password):
         email_input = driver.find_element_by_css_selector("input[type='email']")
         password_input = driver.find_element_by_css_selector("input[type='password']")
 
-        email_input.clear()
         email_input.send_keys(email)
-        password_input.clear()
         password_input.send_keys(password)
 
         log_in_button = driver.find_element_by_css_selector("button[data-persistent-id='click.sign-in-with-email']")
@@ -58,8 +56,8 @@ def load_grabr(driver, email, password):
         wait_for_element(driver, "button.mt5")
         email_screen = with_email(driver)
 
-        wait_for_element(email_screen, ".input")
-        sign_in(email_screen)
+        wait_for_element(email_screen, "input[type='email']")
+        logged_in = sign_in(email_screen)
 
         sleep(3)
 
@@ -67,10 +65,10 @@ def load_grabr(driver, email, password):
         try:
             driver.find_element_by_css_selector("._13._14")
             print("Log in error, close the script and try again in a few minutes.")
-            raise
+            raise Exception
 
         except NoSuchElementException:
-            return driver
+            return logged_in
 
 
 def fill_in_price(driver, price):
@@ -87,56 +85,47 @@ def fill_in_price(driver, price):
     return driver
 
 
-def fill_delivery_city(driver, city="Buenos Aires"):
+def fill_delivery_city(driver, city):
 
-    def check_city_registered():
+    city_input = driver.find_element_by_css_selector("input[placeholder='City']")
+    city_input.clear()
+    city_input.send_keys(city)
 
-        city_input.send_keys(Keys.ENTER)
-        city_and_date_details = driver.find_element_by_css_selector(".py5:nth-child(2)")
-        does_city_appear = driver.execute_script("arguments[0].children.length;", city_and_date_details)
+    wait_for_element(".pt8 .py1")  # The city button
+    driver.find_element_by_css_selector(".pt8 .py1").click()
 
-        print(does_city_appear)
+    next_button = driver.find_element_by_css_selector(".LG_gc4 button")
+    next_button.click()
 
-        while does_city_appear != 3:
-            sleep(1)
-            check_city_registered()
-
-        next_button = driver.find_element_by_css_selector(".LG_gc4 button")
-        next_button.click()
-
-    try:
-        city_input = driver.find_element_by_css_selector("input[placeholder='City']")
-        city_input.clear()
-        city_input.send_keys(city)
-
-    except NoSuchElementException:
-        sleep(1)
-        fill_delivery_city(driver)
-
-    finally:
-        check_city_registered()
+    return driver
 
 
-def read_prices(driver):
+def price_breakdown(driver):
 
-    try:
-        price_table = driver.find_element_by_css_selector(".py4")
-        order_total = price_table.find_element_by_xpath("following-sibling::div")
-        usd_price = ''.join(i for i in order_total.text if i.isdigit())
-        total_in_ars = order_total.find_element_by_xpath("following-sibling::div")
-        ars_price = ''.join(i for i in total_in_ars.text if i.isdigit())
-        payment_time = driver.find_element_by_css_selector(
-            ".d-n.SM_pt5>div:nth-of-type(1)>div.mt5")
+    price_table = driver.find_element_by_css_selector(".py4")
 
-    except NoSuchElementException:
-        sleep(1)
-        read_prices(driver)
+    price_items = price_table.find_elements_by_css_selector(".pr3")
+
+    for item in price_items:
+
+        name = item.text
+        row = item.find_element_by_xpath("parent::div/parent::div")
+        value = ''.join(i for i in row.text if i.isdigit())
+
+        print(f"{Name} : {value}")
 
 
-def main(email, password):
+    order_total = price_table.find_element_by_xpath("following-sibling::div")
+    usd_price = ''.join(i for i in order_total.text if i.isdigit())
+    total_in_ars = order_total.find_element_by_xpath("following-sibling::div")
+    ars_price = ''.join(i for i in total_in_ars.text if i.isdigit())
+    payment_time = driver.find_element_by_css_selector(".d-n.SM_pt5>div:nth-of-type(1)>div.mt5")
+
+
+def main():
 
     with open("credentials.txt", "r") as f:
-        email, password= f.readlines()
+        email, password= f.read().splitlines()
 
     driver = load_driver()
 
@@ -150,8 +139,8 @@ def main(email, password):
     wait_for_element(driver, "input[placeholder='City']")
     fill_delivery_city(driver, city="Buenos Aires")
 
-    wait_for_element(driver, ".SM_pb5")
-    read_prices(driver)
+    wait_for_element(driver, ".py4")
+    price_breakdown(driver)
 
     driver.quit()
 
