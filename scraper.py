@@ -18,12 +18,8 @@ def wait_for_element(driver, selector):
 
     try:
         driver.find_element_by_css_selector(selector)
-        loaded = True
 
     except NoSuchElementException:
-        loaded = False
-
-    while not loaded:
         sleep(1)
         wait_for_element(driver, selector)
 
@@ -141,8 +137,8 @@ def read_prices(driver):
 
 def main():
 
-    email = "wixo@simplemail.in"
-    password = '?=V,nYe,g6`_N#pV-8i"VSTS'
+    with open("credentials.txt", "r") as f:
+        email, password= f.readlines()
 
     driver = load_driver()
     load_grabr(driver, email, password)
