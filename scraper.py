@@ -4,7 +4,6 @@ from selenium import webdriver
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.keys import Keys
 from time import sleep
-# from random import randint
 
 
 def load_driver():
@@ -91,7 +90,7 @@ def fill_delivery_city(driver, city):
     city_input.clear()
     city_input.send_keys(city)
 
-    wait_for_element(".pt8 .py1")  # The city button
+    wait_for_element(driver, ".pt8 .py1")  # The city button
     driver.find_element_by_css_selector(".pt8 .py1").click()
 
     next_button = driver.find_element_by_css_selector(".LG_gc4 button")
@@ -110,16 +109,18 @@ def price_breakdown(driver):
 
         name = item.text
         row = item.find_element_by_xpath("parent::div/parent::div")
-        value = ''.join(i for i in row.text if i.isdigit())
+        value = int(''.join(i for i in row.text if i.isdigit()))
 
         print(f"{name} : {value}")
 
 
     order_total = price_table.find_element_by_xpath("following-sibling::div")
-    usd_price = ''.join(i for i in order_total.text if i.isdigit())
+    usd_price = int(''.join(i for i in order_total.text if i.isdigit()))
+
     total_in_ars = order_total.find_element_by_xpath("following-sibling::div")
-    ars_price = ''.join(i for i in total_in_ars.text if i.isdigit())
-    payment_time = driver.find_element_by_css_selector(".d-n.SM_pt5>div:nth-of-type(1)>div.mt5")
+    ars_price = int(''.join(i for i in total_in_ars.text if i.isdigit()))
+
+    print(usd_price, ars_price)
 
 
 def main():
