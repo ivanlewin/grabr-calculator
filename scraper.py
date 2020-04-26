@@ -133,21 +133,27 @@ def read_prices(driver):
         read_prices(driver)
 
 
-def main():
+def main(email, password):
 
     with open("credentials.txt", "r") as f:
         email, password= f.readlines()
 
     driver = load_driver()
+
     load_grabr(driver, email, password)
 
-    product_details_page = driver.get(f"https://grabr.io/en/grabs/new?url=https%3A%2F%2Fwww.apple.com%2Fshop%2Fbuy-iphone%2Fiphone-11-pro")
+    driver.get(f"https://grabr.io/en/grabs/new?url=https%3A%2F%2Fwww.apple.com%2Fshop%2Fbuy-iphone%2Fiphone-11-pro")
 
-    wait_for_element(product_details_page, ".SM_pb5")
-    fill_in_price(product_details_page)
+    wait_for_element(driver, "input[type='number']")
+    fill_in_price(driver, price=100)
 
-    fill_delivery_city(driver)
+    wait_for_element(driver, "input[placeholder='City']")
+    fill_delivery_city(driver, city="Buenos Aires")
+
+    wait_for_element(driver, ".SM_pb5")
     read_prices(driver)
+
+    driver.quit()
 
 
 if __name__ == '__main__':
