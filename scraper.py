@@ -53,7 +53,7 @@ def load_grabr(driver, email, password):
     driver.get("https://grabr.io/login")
     sleep(3)
 
-    if driver.current_url.endswith("login"):  # If not redirected to main page (e.g.: a profile with a stored session)
+    if driver.current_url.endswith("login"):
 
         wait_for_element(driver, "button.mt5")
         email_screen = with_email(driver)
@@ -63,14 +63,16 @@ def load_grabr(driver, email, password):
 
         sleep(3)
 
-        # Search for an error banner.
+        # Check if there's an error banner and load_grabr again, otherwise proceed
         try:
             driver.find_element_by_css_selector("._13._14")
             print("Log in error, close the script and try again in a few minutes.")
-            raise
+            load_grabr(driver, email, password)
 
         except NoSuchElementException:
-            return driver
+            pass
+
+    return driver
 
 
 def fill_in_price(driver, price):
@@ -89,30 +91,32 @@ def fill_in_price(driver, price):
 
 def fill_delivery_city(driver, city):
 
-    def confirm_city():
+    def check_city_registered():
 
         city_input.send_keys(Keys.ENTER)
+        city_and_date_details = driver.find_element_by_css_selector(".py5:nth-child(2)")
+        does_city_appear = driver.execute_script("arguments[0].children.length;", city_and_date_details)
 
-        # Search for an error banner.
-        try:
-            driver.find_element_by_css_selector("._7c._7d")
+        print(does_city_appear)
+
+        while does_city_appear != 3:
             sleep(1)
-            print("aaaa")
-            confirm_city()
+            check_city_registered()
 
-        except NoSuchElementException:
-            city_and_date_details = driver.find_element_by_css_selector(".py5:nth-child(2)").text
-            if city in city_and_date_details:
-                return
+        next_button = driver.find_element_by_css_selector(".LG_gc4 button")
+        next_button.click()
 
-    city_input = driver.find_element_by_css_selector("input[placeholder='City']")
-    city_input.clear()
-    city_input.send_keys(city)
+    try:
+        city_input = driver.find_element_by_css_selector("input[placeholder='City']")
+        city_input.clear()
+        city_input.send_keys(city)
 
-    confirm_city()
+    except NoSuchElementException:
+        sleep(1)
+        fill_delivery_city(driver)
 
-    next_button = driver.find_element_by_css_selector(".LG_gc4 button")
-    next_button.click()
+    finally:
+        check_city_registered()
 
 
 def read_prices(driver):
@@ -131,27 +135,20 @@ def read_prices(driver):
         read_prices(driver)
 
 
-def main(email, password):
+def main():
 
-    with open("credentials.txt", "r") as f:
-        email, password= f.readlines()
+    email = "wixo@simplemail.in"
+    password = '?=V,nYe,g6`_N#pV-8i"VSTS'
 
     driver = load_driver()
-
     load_grabr(driver, email, password)
 
     driver.get(f"https://grabr.io/en/grabs/new?url=https%3A%2F%2Fwww.apple.com%2Fshop%2Fbuy-iphone%2Fiphone-11-pro")
 
-    wait_for_element(driver, "input[type='number']")
-    fill_in_price(driver, price=100)
-
-    wait_for_element(driver, "input[placeholder='City']")
-    fill_delivery_city(driver, city="Buenos Aires")
-
     wait_for_element(driver, ".SM_pb5")
+    fill_in_price(driver, price=100)
+    fill_delivery_city(driver, city="Buenos Aires")
     read_prices(driver)
-
-    driver.quit()
 
 
 if __name__ == '__main__':
