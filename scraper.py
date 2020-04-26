@@ -1,5 +1,3 @@
-# import os
-# from datetime import datetime
 from selenium import webdriver
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.keys import Keys
@@ -13,34 +11,33 @@ def load_driver():
     return driver
 
 
-def wait_for_element(driver, selector):
+def wait_for_element(driver, selector, count=0):
 
-    try:
-        driver.find_element_by_css_selector(selector)
+    while count < 15:
 
-    except NoSuchElementException:
-        sleep(1)
-        wait_for_element(driver, selector)
+        try:
+            element = driver.find_element_by_css_selector(selector)
+            return element
 
-    return
+        except NoSuchElementException:
+            sleep(1)
+            wait_for_element(driver, selector, count+1)
+
+    else:
+        raise NoSuchElementException("Waited 15 seconds for element to load but couldn't find it.")
 
 
 def load_grabr(driver, email, password):
 
-    def with_email(driver):
-
-        login_with_email = driver.find_element_by_css_selector("button.mt5")
-        login_with_email.click()
-
-        return driver
-
     def sign_in(driver):
 
-        email_input = driver.find_element_by_css_selector("input[type='email']")
+        email_input = wait_for_element(driver, "input[type='email']")
         password_input = driver.find_element_by_css_selector("input[type='password']")
 
         email_input.send_keys(email)
         password_input.send_keys(password)
+
+        sleep(3)
 
         log_in_button = driver.find_element_by_css_selector("button[data-persistent-id='click.sign-in-with-email']")
         log_in_button.click()
@@ -52,19 +49,15 @@ def load_grabr(driver, email, password):
 
     if driver.current_url.endswith("login"):  # If not redirected to main page (e.g.: a profile with a stored session)
 
-        wait_for_element(driver, "button.mt5")
-        email_screen = with_email(driver)
+        with_email = wait_for_element(driver, "button.mt5")
+        with_email.click()
 
-        wait_for_element(email_screen, "input[type='email']")
-        logged_in = sign_in(email_screen)
-
-        sleep(3)
+        logged_in = sign_in(driver)
 
         # Search for an error banner.
         try:
-            driver.find_element_by_css_selector("._13._14")
-            print("Log in error, close the script and try again in a few minutes.")
-            raise Exception
+            logged_in.find_element_by_css_selector("._13._14")
+            raise Exception("Log in error, close the script and try again in a few minutes.")
 
         except NoSuchElementException:
             return logged_in
@@ -72,7 +65,7 @@ def load_grabr(driver, email, password):
 
 def fill_in_price(driver, price):
 
-    price_input = driver.find_element_by_css_selector("input[type='number']")
+    price_input = wait_for_element(driver, "input[type='number']")
     price_input.clear()
     price_input.send_keys(str(price))
 
@@ -86,12 +79,12 @@ def fill_in_price(driver, price):
 
 def fill_delivery_city(driver, city):
 
-    city_input = driver.find_element_by_css_selector("input[placeholder='City']")
+    city_input = wait_for_element(driver, "input[placeholder='City']")
     city_input.clear()
     city_input.send_keys(city)
 
-    wait_for_element(driver, ".pt8 .py1")  # The city button
-    driver.find_element_by_css_selector(".pt8 .py1").click()
+    city_button = wait_for_element(driver, ".pt8 .py1")
+    city_button.click()
 
     next_button = driver.find_element_by_css_selector(".LG_gc4 button")
     next_button.click()
@@ -101,7 +94,7 @@ def fill_delivery_city(driver, city):
 
 def price_breakdown(driver):
 
-    price_table = driver.find_element_by_css_selector(".py4")
+    price_table = wait_for_element(driver, ".py4")
 
     price_items = price_table.find_elements_by_css_selector(".pr3")
 
@@ -130,17 +123,14 @@ def main():
 
     driver = load_driver()
 
-    load_grabr(driver, email, password)
+    driver = load_grabr(driver, email, password)
 
     driver.get(f"https://grabr.io/en/grabs/new?url=https%3A%2F%2Fwww.apple.com%2Fshop%2Fbuy-iphone%2Fiphone-11-pro")
 
-    wait_for_element(driver, "input[type='number']")
     fill_in_price(driver, price=100)
 
-    wait_for_element(driver, "input[placeholder='City']")
     fill_delivery_city(driver, city="Buenos Aires")
 
-    wait_for_element(driver, ".py4")
     price_breakdown(driver)
 
     driver.quit()
